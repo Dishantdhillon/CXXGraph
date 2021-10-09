@@ -1371,6 +1371,100 @@ namespace CXXGRAPH
 		result.result = -1;
 		return result;
 	}
+	
+	template <typename T>
+	const BellmanFordResult Graph<T>::bellmanford(const Node<T> &source, const Node<T> &target) const
+	{
+		BellmanFordResult result;
+		result.success = false;
+		result.errorMessage = "";
+		result.result = INF_DOUBLE;
+		auto nodeSet = getNodeSet();
+		if (std::find(nodeSet.begin(), nodeSet.end(), &source) == nodeSet.end())
+		{
+			// check if source node exist in the graph
+			result.errorMessage = ERR_SOURCE_NODE_NOT_IN_GRAPH;
+			return result;
+		}
+		if (std::find(nodeSet.begin(), nodeSet.end(), &target) == nodeSet.end())
+		{
+			// check if target node exist in the graph
+			result.errorMessage = ERR_TARGET_NODE_NOT_IN_GRAPH;
+			return result;
+		}
+		const AdjacencyMatrix<T> adj = getAdjMatrix();
+		// n denotes the number of vertices in graph
+		int n = adj.size();
+
+		// setting all the distances initially to INF_DOUBLE
+		std::map<const Node<T> *, double> dist;
+
+		for (auto elem : adj)
+		{
+			dist[elem.first] = INF_DOUBLE;
+		}
+
+		// marking the distance of source as 0
+		dist[&source] = 0;
+
+		for(int i = 0; i < n-1; i++)
+		{
+			
+			// for all the reachable vertex from the currently exploring vertex
+			// we will try to minimize the distance
+			if (adj.find(currentNode) != adj.end())
+			{
+				for (std::pair<const Node<T> *, const Edge<T> *> elem : adj)
+				{
+					// minimizing distances
+					if (elem.second->isWeighted().has_value() && elem.second->isWeighted().value())
+					{
+						if (elem.second->isDirected().has_value() && elem.second->isDirected().value())
+						{
+							const DirectedWeightedEdge<T> *dw_edge = dynamic_cast<const DirectedWeightedEdge<T> *>(elem.second);
+							if (currentDist + dw_edge->getWeight() < dist[elem.first])
+							{
+								dist[elem.first] = currentDist + dw_edge->getWeight();
+								pq.push(std::make_pair(dist[elem.first], elem.first));
+							}
+						}
+						else if (elem.second->isDirected().has_value() && !elem.second->isDirected().value())
+						{
+							const UndirectedWeightedEdge<T> *udw_edge = dynamic_cast<const UndirectedWeightedEdge<T> *>(elem.second);
+							if (currentDist + udw_edge->getWeight() < dist[elem.first])
+							{
+								dist[elem.first] = currentDist + udw_edge->getWeight();
+								pq.push(std::make_pair(dist[elem.first], elem.first));
+							}
+						}
+						else
+						{
+							//ERROR it shouldn't never returned ( does not exist a Node Weighted and not Directed/Undirected)
+							result.errorMessage = ERR_NO_DIR_OR_UNDIR_EDGE;
+							return result;
+						}
+					}
+					else
+					{
+						// No Weighted Edge
+						result.errorMessage = ERR_NO_WEIGHTED_EDGE;
+						return result;
+					}
+				}
+			}
+		}
+		if (dist[&target] != INF_DOUBLE)
+		{
+			result.success = true;
+			result.errorMessage = "";
+			result.result = dist[&target];
+			return result;
+		}
+		result.errorMessage = ERR_TARGET_NODE_NOT_REACHABLE;
+		result.result = -1;
+		return result;
+	}
+	
 
 	template <typename T>
 	const std::vector<Node<T>> Graph<T>::breadth_first_search(const Node<T> &start) const
